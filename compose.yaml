@@ -7,11 +7,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3000
-      DATABASE_PATH: /data/heart-memories.sqlite
       NODE_ENV: production
       COOKIE_SECURE: "true"
-    volumes:
-      - heart_memories_data:/data
-
-volumes:
-  heart_memories_data:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      BLOB_READ_WRITE_TOKEN: ${BLOB_READ_WRITE_TOKEN:?Set BLOB_READ_WRITE_TOKEN in .env}

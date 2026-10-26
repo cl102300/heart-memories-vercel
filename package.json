@@ -5,39 +5,42 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "start": "node server/index.mjs",
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "start": "node --env-file-if-exists=.env server/index.mjs",
     "build": "tsc -b && vite build --config vite.config.ts",
     "preview": "vite preview --config vite.config.ts",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "migrate:sqlite": "node --env-file-if-exists=.env scripts/migrate-to-vercel.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@react-three/drei": "^9.121.0",
     "@react-three/fiber": "^8.17.12",
-    "three": "^0.169.0",
-    "zustand": "^5.0.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vercel/blob": "^2.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5"
+    "three": "^0.169.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@types/three": "^0.169.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^14.3.1",
     "@types/node": "^22.10.0",
+    "@types/three": "^0.169.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",
-    "vitest": "^3.0.0",
-    "@testing-library/react": "^14.3.1",
-    "@testing-library/jest-dom": "^6.6.3",
-    "jsdom": "^25.0.1",
-    "eslint": "^9.17.0",
-    "eslint-plugin-react-hooks": "^5.1.0"
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": ">=22.13.0"

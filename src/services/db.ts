@@ -1,4 +1,5 @@
 import { apiRequest } from './api';
+import { upload } from '@vercel/blob/client';
 
 export const MAX_PHOTOS = 999;
 
@@ -38,20 +39,31 @@ class DatabaseService {
     return cachedSnapshot;
   }
 
-  async addPhotos(photos: DbPhoto[]): Promise<void> {
+  async addPhotos(ownerId: string, photos: DbPhoto[]): Promise<void> {
     const addedIds: string[] = [];
     try {
       for (const photo of photos) {
         if (!photo.image) throw new Error(`无法上传“${photo.name}”，没有读取到图片数据`);
-        const form = new FormData();
-        form.set('id', photo.id);
-        form.set('name', photo.name);
-        form.set('width', String(photo.width));
-        form.set('height', String(photo.height));
-        form.set('createdAt', String(photo.createdAt));
-        form.set('thumbnail', photo.thumbnail);
-        form.set('image', photo.image, photo.name);
-        await apiRequest('/api/photos', { method: 'POST', body: form });
+        const metadata = {
+          id: photo.id,
+          name: photo.name,
+          width: photo.width,
+          height: photo.height,
+          createdAt: photo.createdAt,
+          thumbnail: photo.thumbnail,
+        };
+        const blob = await upload(`photos/${ownerId}/${photo.id}`, photo.image, {
+          access: 'private',
+          contentType: photo.image.type,
+          handleUploadUrl: '/api/blob-upload',
+          clientPayload: JSON.stringify(metadata),
+          multipart: true,
+        });
+        await apiRequest('/api/photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...metadata, blobUrl: blob.url }),
+        });
         addedIds.push(photo.id);
       }
       this.invalidate();

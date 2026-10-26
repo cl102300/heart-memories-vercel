@@ -4,11 +4,12 @@ import { PhotoService } from '@/services/photoService';
 import { MAX_PHOTOS } from '@/services/db';
 
 interface PhotoUploaderProps {
+  ownerId: string;
   variant?: 'button' | 'hero';
   disabled?: boolean;
 }
 
-export function PhotoUploader({ variant = 'button', disabled = false }: PhotoUploaderProps) {
+export function PhotoUploader({ ownerId, variant = 'button', disabled = false }: PhotoUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export function PhotoUploader({ variant = 'button', disabled = false }: PhotoUpl
       }
 
       // 先上传，再更新界面，避免保存失败时照片看似已经添加。
-      const savedPhotos = await PhotoService.saveToDB(newPhotos);
+      const savedPhotos = await PhotoService.saveToDB(ownerId, newPhotos);
       addPhotos(savedPhotos);
       if (messages.length > 0) setError(messages.join('；'));
     } catch (cause) {
@@ -64,7 +65,7 @@ export function PhotoUploader({ variant = 'button', disabled = false }: PhotoUpl
     } finally {
       setIsLoading(false);
     }
-  }, [photos.length, addPhotos, disabled]);
+  }, [photos.length, addPhotos, disabled, ownerId]);
 
   useEffect(() => {
     const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');

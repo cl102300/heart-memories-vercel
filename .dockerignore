@@ -2,6 +2,9 @@ node_modules
 dist
 dist-types
 .data
+.env
+.env.*
+!.env.example
 data
 *.sqlite
 *.sqlite-shm

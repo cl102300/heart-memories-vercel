@@ -7,9 +7,10 @@ RUN npm run build
 
 FROM node:24-alpine
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_PATH=/data/heart-memories.sqlite
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 COPY server ./server
 COPY --from=build /app/dist ./dist
 EXPOSE 3000
-VOLUME ["/data"]
 CMD ["node", "server/index.mjs"]

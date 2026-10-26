@@ -8,7 +8,7 @@
 - 首次打开显示空相册引导，不依赖远程示例图片。
 - 支持批量添加 JPG、PNG、WebP 图片，也可以拖拽导入。
 - 展示用缩略图会统一裁切为 4:5 胶片画幅并加轻微暖调；大图查看显示原图。
-- 原图以 BLOB 保存在服务器 SQLite 数据库，缩略图和照片信息也保存在数据库中。
+- 原图保存在私有 Vercel Blob；账户、缩略图和照片信息保存在 Neon Postgres。
 - 点击照片可放大查看，并用左右方向键切换；可删除单张照片或清空相册。
 - 登录同一账户的手机可以上传、查看和删除同一本相册中的照片。
 - 可在「信息设置」中修改相册显示的两位姓名；设置会随账号同步。
@@ -29,11 +29,14 @@
 
 ## 🚀 快速开始
 
-运行环境需要 Node.js 22.13 或更高版本（包含内置 SQLite 模块）。
+运行环境需要 Node.js 22.13 或更高版本。
 
 ```bash
 # 安装依赖
 npm install
+
+# 配置 Neon Postgres 和 Vercel Blob 凭据
+Copy-Item .env.example .env
 
 # 启动开发服务器
 npm run dev
@@ -45,31 +48,54 @@ npm run build
 npm start
 ```
 
-开发模式下打开终端显示的前端地址（默认 `http://localhost:3000/`）。首次使用时创建账户并绑定手机号；另一台手机登录相同账户即可访问同一相册。开发时，手机也可以访问电脑显示的局域网地址。
+在 `.env` 中设置 `DATABASE_URL` 和 `BLOB_READ_WRITE_TOKEN` 后，开发服务器默认运行在 `http://localhost:3000/`。首次使用时创建账户并绑定手机号；另一台手机登录相同账户即可访问同一相册。开发时，手机也可以访问电脑显示的局域网地址。
 
-生产模式需先运行 `npm run build`，再运行 `npm start`。默认监听 `0.0.0.0:3000`，数据库保存在 `data/heart-memories.sqlite`。
+Postgres 表会在首次 API 请求时自动创建。照片原图通过浏览器直传私有 Blob，不经过 Vercel Function，因此保留 25 MB 单张上限。
 
-## 云服务器部署
+## Vercel 部署
 
-安装 Docker 和 Docker Compose 后，在项目目录运行：
+1. 在 Vercel 项目中连接 Neon Postgres，并创建一个 **Private** Vercel Blob Store。
+2. 确认部署环境中配置了 `DATABASE_URL` 和 `BLOB_READ_WRITE_TOKEN`。通过 Vercel Storage 连接的资源通常会自动注入对应变量。
+3. 将仓库导入 Vercel 并部署。`vercel.json` 已配置 Vite 构建、`dist` 输出目录和 SPA 路由回退。
+
+账户、会话和照片元数据存入 Neon；照片原图存入私有 Blob，并由经过登录校验的 API 读取。首次 API 请求会自动初始化数据库表。
+
+### 迁移现有 SQLite 相册
+
+仓库中的 `data/heart-memories.sqlite` 不会提交到 Git，也不会由 Vercel 自动获得。配置好 Neon 与私有 Blob 凭据后，在包含原 SQLite 文件的本地项目目录运行：
+
+```bash
+npm run migrate:sqlite
+```
+
+脚本会复制账户和照片、上传原图，并保留密码哈希；迁移后用户需要在新域名重新登录。迁移不会删除或修改本地 SQLite 文件，可在数据库和照片确认无误前继续留作备份。脚本支持重复运行，已存在的相册记录会跳过。
+
+### Docker 自托管
+
+Docker 运行方式仍可使用，但需要配置同一组 Neon 与私有 Blob 环境变量：
 
 ```bash
 docker compose up -d --build
 ```
 
-Compose 会将数据库保存在 Docker 持久卷 `heart_memories_data` 中，容器重建后照片仍会保留。对公网提供服务时，请在前面配置 HTTPS 反向代理；生产环境默认启用安全登录 Cookie。备份时需停止容器后备份持久卷中的 SQLite 数据库文件。
+对公网提供服务时，请在前面配置 HTTPS 反向代理；生产环境默认启用安全登录 Cookie。
 
 | 环境变量 | 默认值 | 用途 |
 |---|---|---|
 | `PORT` | `3000` | HTTP 端口 |
 | `HOST` | `0.0.0.0` | 监听地址 |
-| `DATABASE_PATH` | `data/heart-memories.sqlite` | SQLite 数据库文件路径 |
+| `DATABASE_URL` | 无 | Neon Postgres 连接字符串 |
+| `BLOB_READ_WRITE_TOKEN` | 无 | Vercel Blob 私有读写令牌 |
 | `COOKIE_SECURE` | 生产环境开启 | 登录 Cookie 是否仅通过 HTTPS 发送 |
 
 ## 📁 项目结构
 
 ```
 heart-memories/
+├── api/[...path].mjs      # Vercel Serverless Function 入口
+├── server/
+│   ├── api.mjs            # 登录、相册与设置 API
+│   └── database.mjs       # Neon Postgres 表与查询
 ├── src/
 │   ├── app/              # 应用入口
 │   ├── components/
@@ -78,7 +104,7 @@ heart-memories/
 │   │   └── gallery/      # 照片墙、照片卡片、详情弹窗
 │   ├── services/
 │   │   ├── api.ts        # 登录与 API 请求
-│   │   ├── db.ts         # 服务端相册 API
+│   │   ├── db.ts         # 相册 API 与 Blob 直传
 │   │   └── photoService.ts # 照片管理服务
 │   ├── three/
 │   │   ├── layouts/      # 布局算法（螺旋星系等）
@@ -87,7 +113,9 @@ heart-memories/
 │   ├── stores/           # Zustand 状态管理
 │   ├── types/            # TypeScript 类型定义
 ├── dist/                 # 生产构建产物
-├── server/index.mjs      # Node.js API 与 SQLite 数据库
+├── server/index.mjs      # 本地/容器 HTTP 服务入口
+├── scripts/migrate-to-vercel.mjs # SQLite 到 Neon/Blob 迁移
+├── vercel.json           # Vercel 构建与 SPA 路由
 ├── Dockerfile            # 云服务器镜像
 ├── compose.yaml          # 持久化部署配置
 └── README.md
@@ -99,8 +127,8 @@ heart-memories/
 - **Vite 6** - 极速开发体验
 - **Three.js** + **React Three Fiber** - 三维渲染
 - **Zustand** - 轻量级状态管理
-- **Node.js 22.13+** - 内置 HTTP 服务与 SQLite 支持
-- **SQLite** - 账户、登录会话、照片信息、缩略图和原图存储
+- **Neon Postgres** - 账户、登录会话、照片信息和缩略图
+- **Vercel Blob 私有存储** - 相册原图
 
 ## 📊 配置说明
 
@@ -119,7 +147,8 @@ heart-memories/
 - ✅ 忘记密码时通过账号和绑定手机号匹配重置，不发送短信验证码；手机号匹配不能证明号码持有权
 - ✅ 照片按账户隔离；JPG、PNG、WebP 原样保存，其他可解码图片自动转为 JPG
 - ✅ 不调用云端图像识别服务
-- ✅ 照片保存在服务器 SQLite 数据库，Docker 部署提供持久卷
+- ✅ 原图保存在私有 Blob，照片 API 按账户会话授权读取
+- ✅ 账户和照片元数据保存在 Postgres
 - ✅ 用户可随时清空账户相册
 
 ## 🌐 浏览器支持
@@ -138,7 +167,7 @@ heart-memories/
 
 ### ✅ 已完成
 - [x] 照片上传（拖拽/点击）
-- [x] 账户登录与 SQLite 照片存储
+- [x] 账户登录与云端照片存储
 - [x] 多设备相册同步
 - [x] 螺旋星系布局
 - [x] 圆形布局

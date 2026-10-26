@@ -72,7 +72,7 @@ export class PhotoService {
   /**
    * 上传照片到当前账户的服务器相册
    */
-  static async saveToDB(photos: Photo[]): Promise<Photo[]> {
+  static async saveToDB(ownerId: string, photos: Photo[]): Promise<Photo[]> {
     const dbPhotos = photos.map(p => ({
       id: p.id,
       name: p.name,
@@ -84,7 +84,7 @@ export class PhotoService {
       size: p.size,
       createdAt: p.createdAt,
     }));
-    await dbService.addPhotos(dbPhotos);
+    await dbService.addPhotos(ownerId, dbPhotos);
     return photos.map((photo) => {
       this.releasePhoto(photo);
       return {

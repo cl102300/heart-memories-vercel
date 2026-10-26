@@ -208,7 +208,7 @@ export default function App() {
         setLegacyPhotoCount(0);
         return;
       }
-      const savedPhotos = await PhotoService.saveToDB(oldPhotos);
+      const savedPhotos = await PhotoService.saveToDB(user.id, oldPhotos);
       addPhotos(savedPhotos);
       try {
         localStorage.setItem(`heart-memories-imported-${user.id}`, '1');
@@ -287,7 +287,7 @@ export default function App() {
                 <button className="button button--quiet" onClick={() => setIsSceneMode((value) => !value)} disabled={isImportingLegacy}>
                   {isSceneMode ? '照片墙' : '三维展览'}
                 </button>
-                <PhotoUploader disabled={!isReady || isImportingLegacy} />
+                <PhotoUploader ownerId={user.id} disabled={!isReady || isImportingLegacy} />
                 {isSceneMode && <button className="button button--danger" onClick={() => void handleClearAll()} disabled={isImportingLegacy}>清空</button>}
               </>
             )}
@@ -310,7 +310,7 @@ export default function App() {
         </Suspense>
       ) : (
         <PhotoGallery
-          emptyUploader={<PhotoUploader variant="hero" disabled={!isReady || isImportingLegacy} />}
+          emptyUploader={<PhotoUploader ownerId={user.id} variant="hero" disabled={!isReady || isImportingLegacy} />}
           onClearAll={() => void handleClearAll()}
           personOneName={coupleNames.personOneName}
           personTwoName={coupleNames.personTwoName}
