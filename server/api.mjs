@@ -463,7 +463,13 @@ async function handleApiRequest(request, url) {
 
 export async function handleApi(request) {
   try {
-    return await handleApiRequest(request, new URL(request.url));
+    const url = new URL(request.url);
+    const apiPath = url.searchParams.get('__api_path');
+    if (url.pathname === '/api/index' && apiPath !== null) {
+      url.pathname = `/api/${apiPath.replace(/^\/+/, '')}`;
+      url.searchParams.delete('__api_path');
+    }
+    return await handleApiRequest(request, url);
   } catch (error) {
     const status = error instanceof HttpError ? error.status :
       error?.code === '23505' ? 409 : error?.message === '未配置 DATABASE_URL' ? 503 : 500;
